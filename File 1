@@ -5,6 +5,18 @@
 
 # Multivariate hypothesis
 
+merged_data_2$`chemo treated:ch1`<- as.factor(merged_data_2$`chemo treated:ch1`)
+merged_data_2$`overall survival event:ch1` <- as.numeric(merged_data_2$`overall survival event:ch1`)
+merged_data_2$`overall survival days:ch1` <- as.numeric(merged_data_2$`overall survival days:ch1`)
+
+library(survival)
+cox_model <- coxph(Surv(`overall survival days:ch1`, `overall survival event:ch1`) ~ 
+                   ESR1 * `chemo treated:ch1` + `age at diagnosis:ch1` + `tumor size:ch1` + `er status:ch1` + `her2 status:ch1` + `pgr status:ch1`, 
+                   data = merged_data_2)
+summary(cox_model)
+
+library(survminer)
+ggsurvplot(survfit(cox_model), data = merged_data_2, risk.table = TRUE)
 
 
 
