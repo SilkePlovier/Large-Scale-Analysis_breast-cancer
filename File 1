@@ -1,10 +1,217 @@
-# Univariate hypothesis
+###Introduction
+#read in Breast cancer dataset
+install.packages("tidyverse")
+library(tidyverse)
+BC_data <- read_tsv("GSE96058_expression_matrix_3decimals.tsv", n_max = 1000)
+
+#read in textfile dataset
+textfile <- read_tsv("GSE96058_metadata.txt")
+summary(textfile)
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+###Preprocessing
+#Missing-value summary for the metadata
+missing_summary <- textfile %>%
+  summarise(across(everything(), ~sum(is.na(.)))) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "variabele",
+    values_to = "missing_count"
+  ) %>%
+  mutate(
+    missing_percent = (missing_count / nrow(textfile)) * 100
+  ) %>%
+  arrange(desc(missing_percent))
+missing_summary
+
+
+#Plot of missing values for the metadata
+ggplot(missing_summary,
+       aes(x = reorder(variabele, missing_percent),
+           y = missing_percent)) +
+  geom_col(fill = "steelblue", color = "black", alpha = 0.8) +
+  coord_flip() +
+  labs(
+    title = "Percentage ontbrekende waarden per kolom",
+    x = "Variabele",
+    y = "Percentage missing (%)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.y = element_text(size = 10),
+    plot.title = element_text(face = "bold", size = 16)
+  )
+#treating the missing values
+#removing ki67
+clean <- textfile %>%
+  select(-`ki67 status:ch1`)
+
+# KNN imputation on the metadata
+cleaned_data <- kNN(clean, k = 5, imp_var = FALSE)
+
+#Missing-value summary for BC_data
+missing_summary_BC <- BC_data %>%
+  summarise(across(everything(), ~sum(is.na(.)))) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "variable",
+    values_to = "missing_count"
+  ) %>%
+  mutate(
+    missing_percent = (missing_count / nrow(BC_data)) * 100
+  ) %>%
+  arrange(desc(missing_percent))
+
+missing_summary_BC
+
+#plot of the missing value summary for the BC_data
+ggplot(missing_summary_BC,
+       aes(x = reorder(variable, missing_percent),
+           y = missing_percent)) +
+  geom_col(fill = "steelblue", color = "black", alpha = 0.8) +
+  coord_flip() +
+  labs(
+    title = "Percentage ontbrekende waarden per kolom (BC_dataset)",
+    x = "Variable",
+    y = "Percentage missing (%)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.y = element_text(size = 10),
+    plot.title = element_text(face = "bold", size = 16)
+  )
+
+#preprocessing for making the merged dataset
+colnames(BC_data)[1] <- 'title'
+transposed_BC <- BC_data %>%
+  column_to_rownames("title") %>%
+  t() %>%
+  as.data.frame() %>%
+  rownames_to_column("title")
+
+#making the merged dataset
+merged_data <- left_join(cleaned_data, transposed_BC, by = "title")
+
+merged_data
+
+###univariate hypothesis
+#univariate hypothesis preprocessing of data
+
+#outliers
+library(dplyr)
+
+Q1 <- quantile(merged_data$ABHD11, 0.25, na.rm = TRUE)
+Q3 <- quantile(merged_data$ABHD11, 0.75, na.rm = TRUE)
+IQR_value <- IQR(merged_data$ABHD11, na.rm = TRUE)
+
+lower_bound <- Q1 - 1.5 * IQR_value
+upper_bound <- Q3 + 1.5 * IQR_value
+
+outliers <- merged_data %>%
+  filter(ABHD11 < lower_bound | ABHD11 > upper_bound)
+
+num_outliers <- nrow(outliers)
+print(paste("Number of outliers:", num_outliers))
+
+#boxplot with outlier detection
+library(ggplot2)
+
+ggplot(merged_data, aes(y = ABHD11, x = 1)) +
+  
+  geom_jitter(
+    width = 0.2,
+    alpha = 0.3,
+    color = "grey50"
+  ) +
+  
+  geom_boxplot(
+    width = 0.3,
+    outlier.color = "black",
+    outlier.size = 1.5,
+    fill = NA,
+    color = "black"
+  ) +
+  
+  labs(
+    title = "ABHD11 expression",
+    x = "",
+    y = "ABHD11 expression"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(face = "bold")
+  )
+
+#histogram of the ABHD11 gene
+library(ggplot2)
+
+ggplot(merged_data, aes(x = ABHD11)) +
+  geom_histogram(
+    bins = 60,
+    fill = "steelblue",
+    color = "black",
+    alpha = 0.7
+  ) +
+  labs(
+    title = "Histogram of ABHD11",
+    x = "ABHD11 expression",
+    y = "Frequency"
+  ) +
+  theme_minimal(base_size = 14)
+
+#univariate hypothesis test with restriction on tumor size
+library(dplyr)
+library(ggplot2)
+
+# 1. Filter dataset for tumors < 2 cm
+merged_data_2cm <- merged_data %>%
+  filter(`tumor size:ch1` <= 2)
+
+# 2. Linear regression model: tumor size ~ ABHD11
+model <- lm(`tumor size:ch1` ~ ABHD11, data = merged_data_2cm)
+summary(model)
+
+# 3. Scatterplot + regressionline
+ggplot(merged_data_2cm, aes(x = ABHD11, y = `tumor size:ch1`)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm") +
+  labs(
+    x = "ABHD11 expression",
+    y = "Tumor size (cm)"
+  ) +
+  theme_minimal()
+
+#univariate hypothesis test without restriction on tumor size
+library(dplyr)
+library(ggplot2)
+
+# 1. Linear regression model: tumor size ~ ABHD11 on the complete dataset
+model_full <- lm(`tumor size:ch1` ~ ABHD11, data = merged_data)
+summary(model_full)
+
+#figure of the linear regression
+ggplot(merged_data, aes(x = ABHD11, y = `tumor size:ch1`)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm") +
+  labs(
+    x = "ABHD11 expression",
+    y = "Tumor size (cm)"
+  ) +
+  theme_minimal()
+
+
+###multivariate hypothesis
+#checking for outliers
 
 
 
-
-# Multivariate hypothesis
-
+#testing hypothesis with Cox model
 merged_data_2$`chemo treated:ch1`<- as.factor(merged_data_2$`chemo treated:ch1`)
 merged_data_2$`overall survival event:ch1` <- as.numeric(merged_data_2$`overall survival event:ch1`)
 merged_data_2$`overall survival days:ch1` <- as.numeric(merged_data_2$`overall survival days:ch1`)
@@ -19,6 +226,10 @@ library(survminer)
 ggsurvplot(survfit(cox_model), data = merged_data_2, risk.table = TRUE)
 
 
+###machine learning
 
-# Machine learning
+
+
+
+
 
