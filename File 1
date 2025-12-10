@@ -207,6 +207,138 @@ ggplot(merged_data, aes(x = ABHD11, y = `tumor size:ch1`)) +
 
 
 ###multivariate hypothesis
+#t-SNE
+# 1. Load required packages
+library(matrixStats)
+library(Rtsne)
+
+set.seed(42)  #reproducibility
+
+# Convert to numeric properly
+BC_data <- as.data.frame(BC_data)
+
+# Remove whitespace and convert all columns to numeric
+BC_data[] <- lapply(BC_data, function(x) as.numeric(trimws(x)))
+
+# 2. Ensure BC_data is a numeric matrix
+# BC_data must be: rows = genes, columns = samples
+BC_data <- as.matrix(BC_data)
+
+# 3. Compute variance per gene (FAST)
+gene_var <- rowVars(BC_data)              # numeric vector of variances
+names(gene_var) <- rownames(BC_data)      # label variance values with gene names
+
+# 4. Select top 1000 most variable genes
+n_top <- min(1000, nrow(BC_data))         # if fewer than 1000 genes, adjust automatically
+top_genes <- names(sort(gene_var, decreasing = TRUE))[1:n_top]
+
+# 5. Subset the expression matrix to top genes
+expr_top <- BC_data[top_genes, ]          # still genes x samples
+
+# 6. Transpose to samples x genes (t-SNE expects samples as rows)
+expr_top_t <- t(expr_top)
+
+# 7. Scale expression values (z-score per gene)
+expr_scaled <- scale(expr_top_t)
+
+# 8. Run t-SNE (2 dimensions)
+tsne_res <- Rtsne(
+  expr_scaled,
+  dims = 2,
+  perplexity = 30,    # adjust depending on sample size
+  verbose = TRUE,
+  pca = FALSE
+)
+
+# 9. Create a dataframe with t-SNE coordinates
+tsne_df <- data.frame(
+  Sample = rownames(expr_scaled),
+  TSNE1  = tsne_res$Y[,1],
+  TSNE2  = tsne_res$Y[,2],
+  stringsAsFactors = FALSE
+)
+
+head(tsne_df)
+
+# 10. Create a scatter plot for the t_SNE
+ggplot(tsne_df, aes(x = TSNE1, y = TSNE2)) +
+  geom_point(color = "steelblue", size = 2, alpha = 0.7) +  # punten
+  theme_minimal() +                                         # nette achtergrond
+  labs(
+    title = "t-SNE 2-Dimensional Digit Visualization",
+    x = "t-SNE Dimension 1",
+    y = "t-SNE Dimension 2"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.title = element_text(size = 14)
+  )
+# 11. Merge t-SNE coordinates with merged_data on sample ID (F1, F2, F3,...)
+tsne_merged <- merge(
+  tsne_df,     
+  merged_data,       
+  by.x = "Sample",  
+  by.y = "title",      
+  all.x = TRUE
+)
+# 12. Create plots for the clinical variables of interest
+#PLOT FOR CHEMOTHERAPY
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`chemo treated:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by Chemo Treatment",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR SURVIVAL EVENT
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`overall survival event:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by overall survival event",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR ER STATUS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`er status:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by ER status",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR HER2 STATUS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`her2 status:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by HER2 status",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR PGR STATUS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`pgr status:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by PGR status",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR AGE AT DIAGNOSIS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `age at diagnosis:ch1`)) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_viridis_c(option = "plasma") +
+  theme_minimal() +
+  labs(title = "t-SNE colored by Age at Diagnosis",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR OVERALL SURVIVAL DAYS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `overall survival days:ch1`)) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_viridis_c(option = "plasma") +
+  theme_minimal() +
+  labs(title = "t-SNE colored by overall survival days",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR TUMOR SIZE
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `tumor size:ch1`)) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_viridis_c(option = "plasma") +
+  theme_minimal() +
+  labs(title = "t-SNE colored by tumor size",
+       x = "t-SNE 1", y = "t-SNE 2")
+
 #checking for outliers
 
 
