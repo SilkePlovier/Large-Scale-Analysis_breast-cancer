@@ -358,10 +358,202 @@ library(survminer)
 ggsurvplot(survfit(cox_model), data = merged_data_2, risk.table = TRUE)
 
 
-###machine learning
+###machine learning (python)
+#load packages
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.metrics import confusion_matrix
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
 
 
+sns.set_style("whitegrid")
+sns.set_palette("deep")
 
+%matplotlib inline
+
+#Read in Breast cancer dataset
+df = pd.read_csv("GSE96058_expression_matrix_3decimals_new.tsv", sep="\t", header=None)
+dfmeta = pd.read_csv("GSE96058_metadata.txt", sep="\t")
+
+#Merge data 
+df=df.T
+df.columns = df.iloc[0]
+df = df.iloc[1:]
+first_col = df.columns[0]
+df = df.set_index(first_col)
+dfmeta = dfmeta.set_index("title")
+dfmeta.index.name = None
+combined = df.join(dfmeta, how="inner")
+combined.head()
+
+#impute missing values and remove ki67
+combined = combined.drop(columns=["ki67 status:ch1"])
+from sklearn.impute import KNNImputer
+numeric_cols = combined.select_dtypes(include=['float64','int64']).columns
+categorical_cols = combined.select_dtypes(exclude=['float64','int64']).columns
+imputer = KNNImputer(n_neighbors=5)
+combined[numeric_cols] = imputer.fit_transform(combined[numeric_cols])
+
+#only use certain ER values (0 or 1)
+mask = combined["er status:ch1"].isin([0.0, 1.0])
+combined_bin = combined.loc[mask].copy()
+y = combined_bin["er status:ch1"].astype(int)
+
+#split the data
+#for model 1
+genes_A = ["ESR1"]
+X_A = combined_bin[genes_A]
+X_A_train, X_A_test, y_train, y_test = train_test_split(
+    X_A, y, test_size=0.2, random_state=42, stratify=y
+)
+#for model 2
+X_all = combined_bin[gene_cols].apply(pd.to_numeric, errors="coerce")
+X_train, X_test, y_train, y_test = train_test_split(
+    X_all, y, test_size=0.2, random_state=42, stratify=y
+)
+
+#standaardiseren 
+
+#model 1
+scaler = StandardScaler()
+scaler.fit(X_A_train)                  
+train_A_scaled = scaler.transform(X_A_train)
+test_A_scaled = scaler.transform(X_A_test)
+
+#model 2: take first the 500 most variabele genes
+variances = X_train.var(axis=0)
+top500 = variances.sort_values(ascending=False).head(500).index
+X_train_500 = X_train[top500]
+X_test_500 = X_test[top500]
+scaler = StandardScaler()
+scaler.fit(X_train_500)
+X_train_500_scaled = scaler.transform(X_train_500)
+X_test_500_scaled = scaler.transform(X_test_500)
+
+#logistic regression 
+#model 1
+clf_A = LogisticRegression(max_iter=500)
+clf_A.fit(train_A_scaled, y_train)
+prob_A = clf_A.predict_proba(test_A_scaled)[:, 1]
+
+print("=== MODEL A (ESR1 only) ===")
+print("AUC:", roc_auc_score(y_test, prob_A))
+print(classification_report(y_test, (prob_A >= 0.5).astype(int)))
+
+#model 2
+clf_C = LogisticRegression(max_iter=1000)
+clf_C.fit(X_train_500_scaled, y_train)
+prob_C = clf_C.predict_proba(X_test_500_scaled)[:, 1]
+
+print("=== MODEL C (Top 500 variabele genen) ===")
+print("AUC:", roc_auc_score(y_test, prob_C))
+print(classification_report(y_test, (prob_C >= 0.5).astype(int)))
+
+#neural network
+
+#model 1
+
+print("========== MLP NEURAL NETWORK ==========")
+
+alphas = [0.0001, 0.001, 0.01]
+
+# === MLP MODEL A (ESR1 only) ===
+best_auc_A = -1
+best_alpha_A = None
+best_prob_A_mlp = None
+
+for a in alphas:
+    mlp_A = MLPClassifier(
+        hidden_layer_sizes=(100, 50),
+        alpha=a,
+        max_iter=1000,
+        random_state=42
+    )
+    mlp_A.fit(train_A_scaled, y_train)
+    prob = mlp_A.predict_proba(test_A_scaled)[:, 1]
+    auc = roc_auc_score(y_test, prob)
+    if auc > best_auc_A:
+        best_auc_A = auc
+        best_alpha_A = a
+        best_prob_A_mlp = prob
+
+print("=== MLP MODEL A (ESR1 only) ===")
+print("Beste alpha:", best_alpha_A)
+print("AUC:", best_auc_A)
+print(classification_report(y_test, (best_prob_A_mlp >= 0.5).astype(int)))
+#model 2
+alphas = [0.0001, 0.001, 0.01]
+best_auc = -1
+best_alpha = None
+best_prob = None
+
+for a in alphas:
+    mlp_500 = MLPClassifier(
+        hidden_layer_sizes=(100, 50),
+        alpha=a,
+        max_iter=1000,
+        random_state=42
+    )
+    mlp_500.fit(X_train_500_scaled, y_train)
+    prob = mlp_500.predict_proba(X_test_500_scaled)[:, 1]
+    auc = roc_auc_score(y_test, prob)
+
+    if auc > best_auc:
+        best_auc = auc
+        best_alpha = a
+        best_prob = prob
+
+print("=== MODEL C – Neural Network (500 genen) ===")
+print("Beste alpha:", best_alpha)
+print("AUC:", best_auc)
+print(classification_report(y_test, (best_prob >= 0.5).astype(int)))
+
+#random forest
+
+#model 1
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, roc_auc_score
+
+print("========== RANDOM FOREST ==========")
+
+# MODEL A (ESR1 only)
+rf_A = RandomForestClassifier(
+    n_estimators=500,
+    min_samples_leaf=5,
+    random_state=42,
+    n_jobs=-1,
+    class_weight="balanced"   # omdat er veel meer ER+ dan ER- zijn
+)
+rf_A.fit(X_A_train, y_train)
+prob_A_rf = rf_A.predict_proba(X_A_test)[:, 1]
+
+print("=== RF MODEL A (ESR1 only) ===")
+print("AUC:", roc_auc_score(y_test, prob_A_rf))
+print(classification_report(y_test, (prob_A_rf >= 0.5).astype(int)))
+#model 2
+rf_500 = RandomForestClassifier(
+    n_estimators=500,
+    min_samples_leaf=5,
+    random_state=42,
+    class_weight="balanced",
+    n_jobs=-1
+)
+
+rf_500.fit(X_train_500, y_train)
+prob_500_rf = rf_500.predict_proba(X_test_500)[:, 1]
+
+print("=== MODEL C – Random Forest (500 genen) ===")
+print("AUC:", roc_auc_score(y_test, prob_500_rf))
+print(classification_report(y_test, (prob_500_rf >= 0.5).astype(int)))
 
 
 
