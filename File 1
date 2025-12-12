@@ -629,4 +629,116 @@ plt.show()
 
 
 
+### NEW CODE TO ANALYSE NA'S FOR MULTIVARIATE
 
+```{r}
+reduced_merged_data <- merged_data_2 %>%
+  select(`overall survival days:ch1`, `overall survival event:ch1`, ESR1, `chemo treated:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `er status:ch1`, `her2 status:ch1`, `pgr status:ch1`, `endocrine treated:ch1`)
+
+reduced_merged_data$`chemo treated:ch1`<- as.factor(reduced_merged_data$`chemo treated:ch1`)
+reduced_merged_data$`overall survival event:ch1`<- as.factor(reduced_merged_data$`overall survival event:ch1`)
+reduced_merged_data$`er status:ch1`<- as.factor(reduced_merged_data$`er status:ch1`)
+reduced_merged_data$`her2 status:ch1`<- as.factor(reduced_merged_data$`her2 status:ch1`)
+reduced_merged_data$`pgr status:ch1`<- as.factor(reduced_merged_data$`pgr status:ch1`)
+reduced_merged_data$`endocrine treated:ch1` <- as.factor(reduced_merged_data$`endocrine treated:ch1`)
+
+reduced_merged_data
+```
+```{r}
+# Heatmap of NAs
+#install.packages("naniar")
+library(naniar)
+metadata_missing <- reduced_merged_data %>%
+  select(where(~ any(is.na(.))))
+vis_miss(reduced_merged_data, sort_miss = TRUE) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    axis.title.x = element_blank()
+  ) +
+  labs(title = "Missing Data in Metadata")
+```
+
+```{r}
+location_missing_data_chemo <- Textfile %>%
+  filter(is.na(`chemo treated:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `pgr status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `tumor size:ch1`, `age at diagnosis:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`)
+
+location_missing_data_tumor_size <- Textfile %>%
+  filter(is.na(`tumor size:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `pgr status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_tumor_size <- Textfile %>%
+  filter(is.na(`tumor size:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `pgr status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_her2 <- Textfile %>%
+  filter(is.na(`her2 status:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `pgr status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_er <- Textfile %>%
+  filter(is.na(`er status:ch1`)) %>%
+  select(sample_id, `pgr status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_pgr <- Textfile %>%
+  filter(is.na(`pgr status:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_endo <- Textfile %>%
+  filter(is.na(`endocrine treated:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_chemo
+
+location_missing_data_tumor_size
+
+location_missing_data_her2
+
+location_missing_data_er
+
+location_missing_data_pgr
+
+location_missing_data_endo
+```
+
+Chemo treated is missing at random (MAR) because there is a pattern its missingness (endocrine treated values are also missing where chemo treated is missing). PGR and ER are also MAR. These NAs must be imputated with the most freauent value (0 or 1).
+
+Tumor size and HER2 are missing completely at random (MCAR), these NAs must be deleted.
+
+```{r}
+mode_level_her2 <- names(which.max(table(reduced_merged_data$`her2 status:ch1`)))
+
+mode_level_tumor_size <- names(which.max(table(reduced_merged_data$`tumor size:ch1`)))
+
+mode_level_chemo <- names(which.max(table(reduced_merged_data$`chemo treated:ch1`)))
+
+mode_level_er <- names(which.max(table(reduced_merged_data$`er status:ch1`)))
+
+mode_level_pgr <- names(which.max(table(reduced_merged_data$`pgr status:ch1`)))
+
+mode_level_endo <- names(which.max(table(reduced_merged_data$`endocrine treated:ch1`)))
+
+no_NA_reduced_merged_data <- reduced_merged_data %>%
+  mutate(
+    `chemo treated:ch1` = replace(`chemo treated:ch1`,
+                                  is.na(`chemo treated:ch1`),
+                                  mode_level_chemo),
+    `er status:ch1` = replace(`er status:ch1`,
+                              is.na(`er status:ch1`),
+                              mode_level_er),
+    `pgr status:ch1` = replace(`pgr status:ch1`,
+                               is.na(`pgr status:ch1`),
+                               mode_level_pgr),
+    `endocrine treated:ch1` = replace(`endocrine treated:ch1`,
+                                  is.na(`endocrine treated:ch1`),
+                                  mode_level_endo)
+  )
+
+
+library(tidyr)
+
+no_NA_reduced_merged_data <- no_NA_reduced_merged_data %>%
+  drop_na(`her2 status:ch1`) %>%
+  drop_na(`tumor size:ch1`)
+
+no_NA_reduced_merged_data
