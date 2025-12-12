@@ -340,8 +340,42 @@ ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `tumor size:ch1`)) +
        x = "t-SNE 1", y = "t-SNE 2")
 
 #checking for outliers
+# Copy dataset
+data_out <- merged_data
 
+# Select variables used in the Cox model for multivariate outlier detection
+vars <- data_out[, c("ESR1",
+                     "chemo treated:ch1",
+                     "overall survival days:ch1",
+                     "age at diagnosis:ch1",
+                     "tumor size:ch1",
+                     "er status:ch1",
+                     "her2 status:ch1",
+                     "pgr status:ch1")]
 
+# Convert all to numeric (factors become numeric 0/1/2..., which is fine for outlier detection)
+vars_num <- data.frame(lapply(vars, function(x) as.numeric(as.character(x))))
+
+# Keep only rows without NA for covariance calculation
+complete_idx <- complete.cases(vars_num)
+vars_complete <- vars_num[complete_idx, ]
+
+# Compute Mahalanobis distance
+cov_matrix <- cov(vars_complete)
+center <- colMeans(vars_complete)
+
+mahal_dist <- mahalanobis(vars_complete, center, cov_matrix)
+
+# Threshold (p = 0.001)
+threshold <- qchisq(0.999, df = ncol(vars_complete))
+
+# Local outliers (within complete-case subset)
+outliers_local <- which(mahal_dist > threshold)
+
+# Re-map to original indices
+outliers <- which(complete_idx)[outliers_local]
+
+outliers
 
 #testing hypothesis with Cox model
 merged_data_2$`chemo treated:ch1`<- as.factor(merged_data_2$`chemo treated:ch1`)
