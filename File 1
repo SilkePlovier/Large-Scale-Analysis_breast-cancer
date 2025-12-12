@@ -484,6 +484,75 @@ mask = combined["er status:ch1"].isin([0.0, 1.0])
 combined_bin = combined.loc[mask].copy()
 y = combined_bin["er status:ch1"].astype(int)
 
+#take the 500 most variable genes
+
+variances = X_train.var(axis=0)
+top500 = variances.sort_values(ascending=False).head(500).index
+X_train_500 = X_train[top500]
+X_test_500 = X_test[top500]
+
+#check for outliers
+
+#model 1
+esr = df["ESR1"]  
+
+
+Q1 = esr.quantile(0.25)
+Q3 = esr.quantile(0.75)
+IQR = Q3 - Q1
+
+lower = Q1 - 1.5 * IQR
+upper = Q3 + 1.5 * IQR
+
+
+mask = (esr < lower) | (esr > upper)
+
+outliers_esr = df.loc[mask]   
+
+print("Aantal ESR1-outliers:", mask.sum())
+outliers_esr
+plt.figure(figsize=(6, 4))
+sns.boxplot(x=df["ESR1"], color="skyblue")
+plt.title("ESR1 Expression – Boxplot (with outliers)")
+plt.xlabel("ESR1 expression")
+plt.show()
+
+
+#model 2
+
+df_500 = X_train_500.copy()  
+
+outlier_counts = {}
+
+for gene in df_500.columns:
+    x = df_500[gene]
+
+    Q1 = x.quantile(0.25)
+    Q3 = x.quantile(0.75)
+    IQR = Q3 - Q1
+
+    lower = Q1 - 1.5 * IQR
+    upper = Q3 + 1.5 * IQR
+
+    mask = (x < lower) | (x > upper)
+    outlier_counts[gene] = mask.sum()
+
+
+plt.figure(figsize=(12, 20))
+
+sns.boxplot(
+    data=X_train_500, 
+    orient="h",     
+    fliersize=2     
+)
+
+plt.title("Boxplots of 500 most variable genes")
+plt.xlabel("Expression level")
+plt.ylabel("Genes")
+plt.tight_layout()
+plt.show()
+
+
 #split the data
 
 #model 1
@@ -509,12 +578,9 @@ scaler.fit(X_A_train)
 train_A_scaled = scaler.transform(X_A_train)
 test_A_scaled = scaler.transform(X_A_test)
 
-#model 2: take first the 500 most variabele genes
+#model 2
 
-variances = X_train.var(axis=0)
-top500 = variances.sort_values(ascending=False).head(500).index
-X_train_500 = X_train[top500]
-X_test_500 = X_test[top500]
+
 scaler = StandardScaler()
 scaler.fit(X_train_500)
 X_train_500_scaled = scaler.transform(X_train_500)
