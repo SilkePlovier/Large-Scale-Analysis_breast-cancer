@@ -555,5 +555,52 @@ print("=== MODEL C – Random Forest (500 genen) ===")
 print("AUC:", roc_auc_score(y_test, prob_500_rf))
 print(classification_report(y_test, (prob_500_rf >= 0.5).astype(int)))
 
+#confusion matrix
+
+#model 1
+
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Predicted labels
+y_test_pred = (prob_A >= 0.5).astype(int)
+
+# Create confusion matrix
+cm = confusion_matrix(y_test, y_test_pred)
+
+# Plot confusion matrix
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=sorted(y_test.unique()),
+            yticklabels=sorted(y_test.unique()))
+plt.xlabel('Predicted', fontsize=12)
+plt.ylabel('Actual', fontsize=12)
+plt.title('Confusion Matrix - Model 1 (ESR1)', fontsize=14)
+plt.show()
+
+#model 2
+
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# 1. Voorspelde labels (threshold 0.5)
+y_pred_500 = (prob_500_rf >= 0.5).astype(int)
+
+# 2. Confusion matrix
+cm = confusion_matrix(y_test, y_pred_500)
+
+# 3. Plotten
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=sorted(y_test.unique()),
+            yticklabels=sorted(y_test.unique()))
+plt.xlabel('Predicted', fontsize=12)
+plt.ylabel('Actual', fontsize=12)
+plt.title('Confusion Matrix – Model 2 (Random Forest, 500 genes)', fontsize=14)
+plt.show()
+
+
 
 
