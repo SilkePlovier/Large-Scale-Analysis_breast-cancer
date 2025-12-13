@@ -15,6 +15,20 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
+## Make merged dataset
+
+library(tibble)
+BC_data_new <- column_to_rownames(BC_data_new, var = "Unnamed: 0")
+
+BC_data_new2 <- t(BC_data_new)
+BC_data_new2 <- as.data.frame(t(BC_data_new))
+
+BC_data_new2 <- rownames_to_column(BC_data_new2, var = "title")
+
+library(dplyr)
+merged_data_2 <- left_join(Textfile, BC_data_new2, by = "title")
+```
+
 # Preprocessing
 
 ## Missing-value summary for the metadata
@@ -84,6 +98,9 @@ location_missing_data_er
 location_missing_data_pgr
 
 location_missing_data_endo
+
+
+### Processing NA's 
 
 mode_level_her2 <- names(which.max(table(reduced_merged_data$`her2 status:ch1`)))
 
