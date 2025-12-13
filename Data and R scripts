@@ -1,1 +1,739 @@
+#Introduction
 
+## read in Breast cancer dataset
+
+install.packages("tidyverse")
+library(tidyverse)
+BC_data <- read_tsv("GSE96058_expression_matrix_3decimals.tsv", n_max = 1000)
+
+## read in textfile dataset
+
+textfile <- read_tsv("GSE96058_metadata.txt")
+summary(textfile)
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Preprocessing
+
+## Missing-value summary for the metadata
+
+reduced_merged_data <- merged_data_2 %>%
+  select(`overall survival days:ch1`, `overall survival event:ch1`, ABHD11, ESR1, `chemo treated:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `er status:ch1`, `her2 status:ch1`, `pgr status:ch1`, `endocrine treated:ch1`)
+
+reduced_merged_data$`chemo treated:ch1`<- as.factor(reduced_merged_data$`chemo treated:ch1`)
+reduced_merged_data$`overall survival event:ch1`<- as.factor(reduced_merged_data$`overall survival event:ch1`)
+reduced_merged_data$`er status:ch1`<- as.factor(reduced_merged_data$`er status:ch1`)
+reduced_merged_data$`her2 status:ch1`<- as.factor(reduced_merged_data$`her2 status:ch1`)
+reduced_merged_data$`pgr status:ch1`<- as.factor(reduced_merged_data$`pgr status:ch1`)
+reduced_merged_data$`endocrine treated:ch1` <- as.factor(reduced_merged_data$`endocrine treated:ch1`)
+
+reduced_merged_data
+
+## Heatmap of NAs
+
+### install.packages("naniar")
+
+library(naniar)
+metadata_missing <- reduced_merged_data %>%
+  select(where(~ any(is.na(.))))
+vis_miss(reduced_merged_data, sort_miss = TRUE) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+    axis.title.x = element_blank()
+  ) +
+  labs(title = "Missing Data in Metadata")
+
+location_missing_data_chemo <- Textfile %>%
+  filter(is.na(`chemo treated:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `pgr status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `tumor size:ch1`, `age at diagnosis:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`)
+
+location_missing_data_tumor_size <- Textfile %>%
+  filter(is.na(`tumor size:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `pgr status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_tumor_size <- Textfile %>%
+  filter(is.na(`tumor size:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `pgr status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_her2 <- Textfile %>%
+  filter(is.na(`her2 status:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `pgr status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_er <- Textfile %>%
+  filter(is.na(`er status:ch1`)) %>%
+  select(sample_id, `pgr status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_pgr <- Textfile %>%
+  filter(is.na(`pgr status:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_endo <- Textfile %>%
+  filter(is.na(`endocrine treated:ch1`)) %>%
+  select(sample_id, `er status:ch1`, `her2 status:ch1`, `ki67 status:ch1`, `nhg:ch1`, `lymph node group:ch1`, `lymph node status:ch1`, `age at diagnosis:ch1`, `tumor size:ch1`, `overall survival event:ch1`, `endocrine treated:ch1`, `chemo treated:ch1`)
+
+location_missing_data_chemo
+
+location_missing_data_tumor_size
+
+location_missing_data_her2
+
+location_missing_data_er
+
+location_missing_data_pgr
+
+location_missing_data_endo
+
+mode_level_her2 <- names(which.max(table(reduced_merged_data$`her2 status:ch1`)))
+
+mode_level_tumor_size <- names(which.max(table(reduced_merged_data$`tumor size:ch1`)))
+
+mode_level_chemo <- names(which.max(table(reduced_merged_data$`chemo treated:ch1`)))
+
+mode_level_er <- names(which.max(table(reduced_merged_data$`er status:ch1`)))
+
+mode_level_pgr <- names(which.max(table(reduced_merged_data$`pgr status:ch1`)))
+
+mode_level_endo <- names(which.max(table(reduced_merged_data$`endocrine treated:ch1`)))
+
+no_NA_reduced_merged_data <- reduced_merged_data %>%
+  mutate(
+    `chemo treated:ch1` = replace(`chemo treated:ch1`,
+                                  is.na(`chemo treated:ch1`),
+                                  mode_level_chemo),
+    `er status:ch1` = replace(`er status:ch1`,
+                              is.na(`er status:ch1`),
+                              mode_level_er),
+    `pgr status:ch1` = replace(`pgr status:ch1`,
+                               is.na(`pgr status:ch1`),
+                               mode_level_pgr),
+    `endocrine treated:ch1` = replace(`endocrine treated:ch1`,
+                                  is.na(`endocrine treated:ch1`),
+                                  mode_level_endo)
+  )
+
+library(tidyr)
+
+no_NA_reduced_merged_data <- no_NA_reduced_merged_data %>%
+  drop_na(`her2 status:ch1`) %>%
+  drop_na(`tumor size:ch1`)
+
+no_NA_reduced_merged_data
+
+# Univariate hypothesis
+
+## Univariate hypothesis preprocessing of data
+
+#outliers
+library(dplyr)
+
+Q1 <- quantile(merged_data$ABHD11, 0.25, na.rm = TRUE)
+Q3 <- quantile(merged_data$ABHD11, 0.75, na.rm = TRUE)
+IQR_value <- IQR(merged_data$ABHD11, na.rm = TRUE)
+
+lower_bound <- Q1 - 1.5 * IQR_value
+upper_bound <- Q3 + 1.5 * IQR_value
+
+outliers <- merged_data %>%
+  filter(ABHD11 < lower_bound | ABHD11 > upper_bound)
+
+num_outliers <- nrow(outliers)
+print(paste("Number of outliers:", num_outliers))
+
+#boxplot with outlier detection
+library(ggplot2)
+
+ggplot(merged_data, aes(y = ABHD11, x = 1)) +
+  
+  geom_jitter(
+    width = 0.2,
+    alpha = 0.3,
+    color = "grey50"
+  ) +
+  
+  geom_boxplot(
+    width = 0.3,
+    outlier.color = "black",
+    outlier.size = 1.5,
+    fill = NA,
+    color = "black"
+  ) +
+  
+  labs(
+    title = "ABHD11 expression",
+    x = "",
+    y = "ABHD11 expression"
+  ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(face = "bold")
+  )
+
+#histogram of the ABHD11 gene
+library(ggplot2)
+
+ggplot(merged_data, aes(x = ABHD11)) +
+  geom_histogram(
+    bins = 60,
+    fill = "steelblue",
+    color = "black",
+    alpha = 0.7
+  ) +
+  labs(
+    title = "Histogram of ABHD11",
+    x = "ABHD11 expression",
+    y = "Frequency"
+  ) +
+  theme_minimal(base_size = 14)
+
+# Scatterplot to assess linearity between ABHD11 and tumor size
+ggplot(no_NA_reduced_merged_data, 
+       aes(x = ABHD11, y = `tumor size:ch1`)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "loess", se = TRUE, color = "blue") +
+  labs(
+    x = "ABHD11 expression (log-transformed)",
+    y = "Tumor size (cm)",
+    title = "Scatterplot of ABHD11 Expression vs Tumor Size"
+  ) +
+  theme_minimal()
+
+#univariate hypothesis test with restriction on tumor size
+#FOR SMALL TUMORS
+no_NA_reduced_merged_data$`tumor size:ch1` <- as.numeric(no_NA_reduced_merged_data$`tumor size:ch1`)
+# Stap 1: filter for small tumors (<2 cm)
+small_tumors <- no_NA_reduced_merged_data[no_NA_reduced_merged_data$`tumor size:ch1` < 2, ]
+
+# Spearman correlation
+spearman_test <- cor.test(
+  small_tumors$ABHD11,
+  small_tumors$`tumor size:ch1`,
+  method = "spearman"
+)
+print(spearman_test)
+
+# Scatter plot with loess trend line
+library(ggplot2)
+ggplot(small_tumors, aes(x = ABHD11, y = `tumor size:ch1`)) +
+  geom_point() +
+  geom_smooth(method = "loess", color = "blue") +
+  labs(
+    x = "ABHD11 expression (log-transformed)",
+    y = "Tumor size (cm)",
+    title = "Scatterplot: ABHD11 vs Tumor Size (<2 cm)"
+  ) +
+  theme_minimal()
+
+#FOR ALL TUMORS
+# Spearman correlation
+spearman_test <- cor.test(
+  no_NA_reduced_merged_data$ABHD11,
+  no_NA_reduced_merged_data$`tumor size:ch1`,
+  method = "spearman"
+)
+print(spearman_test)
+
+# Scatter plot with loess trend line
+library(ggplot2)
+
+ggplot(no_NA_reduced_merged_data, aes(x = ABHD11, y = `tumor size:ch1`)) +
+  geom_point() +
+  geom_smooth(method = "loess", color = "blue") +
+  labs(
+    x = "ABHD11 expression (log-transformed)",
+    y = "Tumor size (cm)",
+    title = "Scatterplot: ABHD11 vs Tumor Size"
+  ) +
+  theme_minimal()
+
+###Multivariate hypothesis
+#t-SNE
+# 1. Load required packages
+library(matrixStats)
+library(Rtsne)
+
+set.seed(42)  #reproducibility
+
+# Convert to numeric properly
+BC_data <- as.data.frame(BC_data)
+
+# Remove whitespace and convert all columns to numeric
+BC_data[] <- lapply(BC_data, function(x) as.numeric(trimws(x)))
+
+# 2. Ensure BC_data is a numeric matrix
+# BC_data must be: rows = genes, columns = samples
+BC_data <- as.matrix(BC_data)
+
+# 3. Compute variance per gene (FAST)
+gene_var <- rowVars(BC_data)              # numeric vector of variances
+names(gene_var) <- rownames(BC_data)      # label variance values with gene names
+
+# 4. Select top 1000 most variable genes
+n_top <- min(1000, nrow(BC_data))         # if fewer than 1000 genes, adjust automatically
+top_genes <- names(sort(gene_var, decreasing = TRUE))[1:n_top]
+
+# 5. Subset the expression matrix to top genes
+expr_top <- BC_data[top_genes, ]          # still genes x samples
+
+# 6. Transpose to samples x genes (t-SNE expects samples as rows)
+expr_top_t <- t(expr_top)
+
+# 7. Scale expression values (z-score per gene)
+expr_scaled <- scale(expr_top_t)
+
+# 8. Run t-SNE (2 dimensions)
+tsne_res <- Rtsne(
+  expr_scaled,
+  dims = 2,
+  perplexity = 30,    # adjust depending on sample size
+  verbose = TRUE,
+  pca = FALSE
+)
+
+# 9. Create a dataframe with t-SNE coordinates
+tsne_df <- data.frame(
+  Sample = rownames(expr_scaled),
+  TSNE1  = tsne_res$Y[,1],
+  TSNE2  = tsne_res$Y[,2],
+  stringsAsFactors = FALSE
+)
+
+head(tsne_df)
+
+# 10. Create a scatter plot for the t_SNE
+ggplot(tsne_df, aes(x = TSNE1, y = TSNE2)) +
+  geom_point(color = "steelblue", size = 2, alpha = 0.7) +  # punten
+  theme_minimal() +                                         # nette achtergrond
+  labs(
+    title = "t-SNE 2-Dimensional Digit Visualization",
+    x = "t-SNE Dimension 1",
+    y = "t-SNE Dimension 2"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),
+    axis.title = element_text(size = 14)
+  )
+# 11. Merge t-SNE coordinates with merged_data on sample ID (F1, F2, F3,...)
+tsne_merged <- merge(
+  tsne_df,     
+  merged_data,       
+  by.x = "Sample",  
+  by.y = "title",      
+  all.x = TRUE
+)
+# 12. Create plots for the clinical variables of interest
+#PLOT FOR CHEMOTHERAPY
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`chemo treated:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by Chemo Treatment",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR SURVIVAL EVENT
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`overall survival event:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by overall survival event",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR ER STATUS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`er status:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by ER status",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR HER2 STATUS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`her2 status:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by HER2 status",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR PGR STATUS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`pgr status:ch1`))) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
+  theme_minimal() +
+  labs(title = "t-SNE colored by PGR status",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR AGE AT DIAGNOSIS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `age at diagnosis:ch1`)) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_viridis_c(option = "plasma") +
+  theme_minimal() +
+  labs(title = "t-SNE colored by Age at Diagnosis",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR OVERALL SURVIVAL DAYS
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `overall survival days:ch1`)) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_viridis_c(option = "plasma") +
+  theme_minimal() +
+  labs(title = "t-SNE colored by overall survival days",
+       x = "t-SNE 1", y = "t-SNE 2")
+#PLOT FOR TUMOR SIZE
+ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `tumor size:ch1`)) +
+  geom_point(size = 2, alpha = 0.8) +
+  scale_color_viridis_c(option = "plasma") +
+  theme_minimal() +
+  labs(title = "t-SNE colored by tumor size",
+       x = "t-SNE 1", y = "t-SNE 2")
+
+#checking for outliers
+# Copy dataset
+data_out <- merged_data
+
+# Select variables used in the Cox model for multivariate outlier detection
+vars <- data_out[, c("ESR1",
+                     "chemo treated:ch1",
+                     "overall survival days:ch1",
+                     "age at diagnosis:ch1",
+                     "tumor size:ch1",
+                     "er status:ch1",
+                     "her2 status:ch1",
+                     "pgr status:ch1")]
+
+# Convert all to numeric (factors become numeric 0/1/2..., which is fine for outlier detection)
+vars_num <- data.frame(lapply(vars, function(x) as.numeric(as.character(x))))
+
+# Keep only rows without NA for covariance calculation
+complete_idx <- complete.cases(vars_num)
+vars_complete <- vars_num[complete_idx, ]
+
+# Compute Mahalanobis distance
+cov_matrix <- cov(vars_complete)
+center <- colMeans(vars_complete)
+
+mahal_dist <- mahalanobis(vars_complete, center, cov_matrix)
+
+# Threshold (p = 0.001)
+threshold <- qchisq(0.999, df = ncol(vars_complete))
+
+# Local outliers (within complete-case subset)
+outliers_local <- which(mahal_dist > threshold)
+
+# Re-map to original indices
+outliers <- which(complete_idx)[outliers_local]
+
+outliers
+
+#testing hypothesis with Cox model
+merged_data_2$`chemo treated:ch1`<- as.factor(merged_data_2$`chemo treated:ch1`)
+merged_data_2$`overall survival event:ch1` <- as.numeric(merged_data_2$`overall survival event:ch1`)
+merged_data_2$`overall survival days:ch1` <- as.numeric(merged_data_2$`overall survival days:ch1`)
+
+library(survival)
+cox_model <- coxph(Surv(`overall survival days:ch1`, `overall survival event:ch1`) ~ 
+                   ESR1 * `chemo treated:ch1` + `age at diagnosis:ch1` + `tumor size:ch1` + `er status:ch1` + `her2 status:ch1` + `pgr status:ch1`, 
+                   data = merged_data_2)
+summary(cox_model)
+
+library(survminer)
+ggsurvplot(survfit(cox_model), data = merged_data_2, risk.table = TRUE)
+
+
+###machine learning (python)
+
+#load packages
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.metrics import confusion_matrix
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
+
+
+sns.set_style("whitegrid")
+sns.set_palette("deep")
+
+%matplotlib inline
+
+#Read in Breast cancer dataset
+df = pd.read_csv("GSE96058_expression_matrix_3decimals_new.tsv", sep="\t", header=None)
+dfmeta = pd.read_csv("GSE96058_metadata.txt", sep="\t")
+
+#merge data 
+
+df=df.T
+df.columns = df.iloc[0]
+df = df.iloc[1:]
+first_col = df.columns[0]
+df = df.set_index(first_col)
+dfmeta = dfmeta.set_index("title")
+dfmeta.index.name = None
+combined = df.join(dfmeta, how="inner")
+combined.head()
+
+#impute missing values and remove ki67
+
+combined = combined.drop(columns=["ki67 status:ch1"])
+from sklearn.impute import KNNImputer
+numeric_cols = combined.select_dtypes(include=['float64','int64']).columns
+categorical_cols = combined.select_dtypes(exclude=['float64','int64']).columns
+imputer = KNNImputer(n_neighbors=5)
+combined[numeric_cols] = imputer.fit_transform(combined[numeric_cols])
+
+#only use certain ER values (0 or 1)
+
+mask = combined["er status:ch1"].isin([0.0, 1.0])
+combined_bin = combined.loc[mask].copy()
+y = combined_bin["er status:ch1"].astype(int)
+
+#take the 500 most variable genes
+
+variances = X_train.var(axis=0)
+top500 = variances.sort_values(ascending=False).head(500).index
+X_train_500 = X_train[top500]
+X_test_500 = X_test[top500]
+
+#check for outliers
+
+#model 1
+esr = df["ESR1"]  
+
+
+Q1 = esr.quantile(0.25)
+Q3 = esr.quantile(0.75)
+IQR = Q3 - Q1
+
+lower = Q1 - 1.5 * IQR
+upper = Q3 + 1.5 * IQR
+
+
+mask = (esr < lower) | (esr > upper)
+
+outliers_esr = df.loc[mask]   
+
+print("Aantal ESR1-outliers:", mask.sum())
+outliers_esr
+plt.figure(figsize=(6, 4))
+sns.boxplot(x=df["ESR1"], color="skyblue")
+plt.title("ESR1 Expression – Boxplot (with outliers)")
+plt.xlabel("ESR1 expression")
+plt.show()
+
+
+#model 2
+
+df_500 = X_train_500.copy()  
+
+outlier_counts = {}
+
+for gene in df_500.columns:
+    x = df_500[gene]
+
+    Q1 = x.quantile(0.25)
+    Q3 = x.quantile(0.75)
+    IQR = Q3 - Q1
+
+    lower = Q1 - 1.5 * IQR
+    upper = Q3 + 1.5 * IQR
+
+    mask = (x < lower) | (x > upper)
+    outlier_counts[gene] = mask.sum()
+
+
+plt.figure(figsize=(12, 20))
+
+sns.boxplot(
+    data=X_train_500, 
+    orient="h",     
+    fliersize=2     
+)
+
+plt.title("Boxplots of 500 most variable genes")
+plt.xlabel("Expression level")
+plt.ylabel("Genes")
+plt.tight_layout()
+plt.show()
+
+
+#split the data
+
+#model 1
+
+genes_A = ["ESR1"]
+X_A = combined_bin[genes_A]
+X_A_train, X_A_test, y_train, y_test = train_test_split(
+    X_A, y, test_size=0.2, random_state=42, stratify=y
+)
+#model 2
+
+X_all = combined_bin[gene_cols].apply(pd.to_numeric, errors="coerce")
+X_train, X_test, y_train, y_test = train_test_split(
+    X_all, y, test_size=0.2, random_state=42, stratify=y
+)
+
+#standaardiseren 
+
+#model 1
+
+scaler = StandardScaler()
+scaler.fit(X_A_train)                  
+train_A_scaled = scaler.transform(X_A_train)
+test_A_scaled = scaler.transform(X_A_test)
+
+#model 2
+
+
+scaler = StandardScaler()
+scaler.fit(X_train_500)
+X_train_500_scaled = scaler.transform(X_train_500)
+X_test_500_scaled = scaler.transform(X_test_500)
+
+#logistic regression 
+
+#model 1
+
+clf_A = LogisticRegression(max_iter=500)
+clf_A.fit(train_A_scaled, y_train)
+prob_A = clf_A.predict_proba(test_A_scaled)[:, 1]
+
+print("=== MODEL A (ESR1 only) ===")
+print("AUC:", roc_auc_score(y_test, prob_A))
+print(classification_report(y_test, (prob_A >= 0.5).astype(int)))
+
+#model 2
+
+clf_C = LogisticRegression(max_iter=1000)
+clf_C.fit(X_train_500_scaled, y_train)
+prob_C = clf_C.predict_proba(X_test_500_scaled)[:, 1]
+
+print("=== MODEL C (Top 500 variabele genen) ===")
+print("AUC:", roc_auc_score(y_test, prob_C))
+print(classification_report(y_test, (prob_C >= 0.5).astype(int)))
+
+#neural network
+
+#model 1
+
+print("========== MLP NEURAL NETWORK ==========")
+alphas = [0.0001, 0.001, 0.01]
+best_auc_A = -1
+best_alpha_A = None
+best_prob_A_mlp = None
+
+for a in alphas:
+    mlp_A = MLPClassifier(
+        hidden_layer_sizes=(100, 50),
+        alpha=a,
+        max_iter=1000,
+        random_state=42
+    )
+    mlp_A.fit(train_A_scaled, y_train)
+    prob = mlp_A.predict_proba(test_A_scaled)[:, 1]
+    auc = roc_auc_score(y_test, prob)
+    if auc > best_auc_A:
+        best_auc_A = auc
+        best_alpha_A = a
+        best_prob_A_mlp = prob
+
+print("=== MLP MODEL A (ESR1 only) ===")
+print("Beste alpha:", best_alpha_A)
+print("AUC:", best_auc_A)
+print(classification_report(y_test, (best_prob_A_mlp >= 0.5).astype(int)))
+
+#model 2
+
+alphas = [0.0001, 0.001, 0.01]
+best_auc = -1
+best_alpha = None
+best_prob = None
+
+for a in alphas:
+    mlp_500 = MLPClassifier(
+        hidden_layer_sizes=(100, 50),
+        alpha=a,
+        max_iter=1000,
+        random_state=42
+    )
+    mlp_500.fit(X_train_500_scaled, y_train)
+    prob = mlp_500.predict_proba(X_test_500_scaled)[:, 1]
+    auc = roc_auc_score(y_test, prob)
+
+    if auc > best_auc:
+        best_auc = auc
+        best_alpha = a
+        best_prob = prob
+
+print("=== MODEL C – Neural Network (500 genen) ===")
+print("Beste alpha:", best_alpha)
+print("AUC:", best_auc)
+print(classification_report(y_test, (best_prob >= 0.5).astype(int)))
+
+#random forest
+
+#model 1
+
+print("========== RANDOM FOREST ==========")
+rf_A = RandomForestClassifier(
+    n_estimators=500,
+    min_samples_leaf=5,
+    random_state=42,
+    n_jobs=-1,
+    class_weight="balanced"   # omdat er veel meer ER+ dan ER- zijn
+)
+rf_A.fit(X_A_train, y_train)
+prob_A_rf = rf_A.predict_proba(X_A_test)[:, 1]
+
+print("=== RF MODEL A (ESR1 only) ===")
+print("AUC:", roc_auc_score(y_test, prob_A_rf))
+print(classification_report(y_test, (prob_A_rf >= 0.5).astype(int)))
+
+#model 2
+
+rf_500 = RandomForestClassifier(
+    n_estimators=500,
+    min_samples_leaf=5,
+    random_state=42,
+    class_weight="balanced",
+    n_jobs=-1
+)
+
+rf_500.fit(X_train_500, y_train)
+prob_500_rf = rf_500.predict_proba(X_test_500)[:, 1]
+
+print("=== MODEL C – Random Forest (500 genen) ===")
+print("AUC:", roc_auc_score(y_test, prob_500_rf))
+print(classification_report(y_test, (prob_500_rf >= 0.5).astype(int)))
+
+#confusion matrix
+
+#model 1
+
+y_test_pred = (prob_A >= 0.5).astype(int)
+cm = confusion_matrix(y_test, y_test_pred)
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=sorted(y_test.unique()),
+            yticklabels=sorted(y_test.unique()))
+plt.xlabel('Predicted', fontsize=12)
+plt.ylabel('Actual', fontsize=12)
+plt.title('Confusion Matrix - Model 1 (ESR1)', fontsize=14)
+plt.show()
+
+#model 2
+
+y_pred_500 = (prob_500_rf >= 0.5).astype(int)
+cm = confusion_matrix(y_test, y_pred_500)
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=sorted(y_test.unique()),
+            yticklabels=sorted(y_test.unique()))
+plt.xlabel('Predicted', fontsize=12)
+plt.ylabel('Actual', fontsize=12)
+plt.title('Confusion Matrix – Model 2 (Random Forest, 500 genes)', fontsize=14)
+plt.show()
