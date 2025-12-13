@@ -1,6 +1,6 @@
-#Introduction
+# Introduction
 
-## read in Breast cancer dataset
+## Read in Breast cancer dataset
 
 install.packages("tidyverse")
 library(tidyverse)
@@ -31,10 +31,9 @@ reduced_merged_data$`endocrine treated:ch1` <- as.factor(reduced_merged_data$`en
 
 reduced_merged_data
 
-## Heatmap of NAs
+### Heatmap of NAs
 
-### install.packages("naniar")
-
+install.packages("naniar")
 library(naniar)
 metadata_missing <- reduced_merged_data %>%
   select(where(~ any(is.na(.))))
@@ -126,7 +125,8 @@ no_NA_reduced_merged_data
 
 ## Univariate hypothesis preprocessing of data
 
-#outliers
+### Outliers
+
 library(dplyr)
 
 Q1 <- quantile(merged_data$ABHD11, 0.25, na.rm = TRUE)
@@ -142,7 +142,8 @@ outliers <- merged_data %>%
 num_outliers <- nrow(outliers)
 print(paste("Number of outliers:", num_outliers))
 
-#boxplot with outlier detection
+### Boxplot with outlier detection
+
 library(ggplot2)
 
 ggplot(merged_data, aes(y = ABHD11, x = 1)) +
@@ -174,7 +175,8 @@ ggplot(merged_data, aes(y = ABHD11, x = 1)) +
     plot.title = element_text(face = "bold")
   )
 
-#histogram of the ABHD11 gene
+### histogram of the ABHD11 gene
+
 library(ggplot2)
 
 ggplot(merged_data, aes(x = ABHD11)) +
@@ -191,7 +193,8 @@ ggplot(merged_data, aes(x = ABHD11)) +
   ) +
   theme_minimal(base_size = 14)
 
-# Scatterplot to assess linearity between ABHD11 and tumor size
+### Scatterplot to assess linearity between ABHD11 and tumor size
+
 ggplot(no_NA_reduced_merged_data, 
        aes(x = ABHD11, y = `tumor size:ch1`)) +
   geom_point(alpha = 0.6) +
@@ -203,13 +206,16 @@ ggplot(no_NA_reduced_merged_data,
   ) +
   theme_minimal()
 
-#univariate hypothesis test with restriction on tumor size
-#FOR SMALL TUMORS
+## Univariate hypothesis test with restriction on tumor size
+
+### FOR SMALL TUMORS
+
 no_NA_reduced_merged_data$`tumor size:ch1` <- as.numeric(no_NA_reduced_merged_data$`tumor size:ch1`)
 # Stap 1: filter for small tumors (<2 cm)
 small_tumors <- no_NA_reduced_merged_data[no_NA_reduced_merged_data$`tumor size:ch1` < 2, ]
 
-# Spearman correlation
+#### Spearman correlation
+
 spearman_test <- cor.test(
   small_tumors$ABHD11,
   small_tumors$`tumor size:ch1`,
@@ -217,7 +223,8 @@ spearman_test <- cor.test(
 )
 print(spearman_test)
 
-# Scatter plot with loess trend line
+#### Scatter plot with loess trend line
+
 library(ggplot2)
 ggplot(small_tumors, aes(x = ABHD11, y = `tumor size:ch1`)) +
   geom_point() +
@@ -229,8 +236,10 @@ ggplot(small_tumors, aes(x = ABHD11, y = `tumor size:ch1`)) +
   ) +
   theme_minimal()
 
-#FOR ALL TUMORS
-# Spearman correlation
+### FOR ALL TUMORS
+
+#### Spearman correlation
+
 spearman_test <- cor.test(
   no_NA_reduced_merged_data$ABHD11,
   no_NA_reduced_merged_data$`tumor size:ch1`,
@@ -238,7 +247,8 @@ spearman_test <- cor.test(
 )
 print(spearman_test)
 
-# Scatter plot with loess trend line
+#### Scatter plot with loess trend line
+
 library(ggplot2)
 
 ggplot(no_NA_reduced_merged_data, aes(x = ABHD11, y = `tumor size:ch1`)) +
@@ -251,42 +261,43 @@ ggplot(no_NA_reduced_merged_data, aes(x = ABHD11, y = `tumor size:ch1`)) +
   ) +
   theme_minimal()
 
-###Multivariate hypothesis
-#t-SNE
-# 1. Load required packages
+# Multivariate hypothesis
+
+## t-SNE
+
 library(matrixStats)
 library(Rtsne)
 
-set.seed(42)  #reproducibility
+set.seed(42)  
 
-# Convert to numeric properly
+#### Convert to numeric properly
 BC_data <- as.data.frame(BC_data)
 
-# Remove whitespace and convert all columns to numeric
+### Remove whitespace and convert all columns to numeric
 BC_data[] <- lapply(BC_data, function(x) as.numeric(trimws(x)))
 
-# 2. Ensure BC_data is a numeric matrix
+### 2. Ensure BC_data is a numeric matrix
 # BC_data must be: rows = genes, columns = samples
 BC_data <- as.matrix(BC_data)
 
-# 3. Compute variance per gene (FAST)
+### 3. Compute variance per gene (FAST)
 gene_var <- rowVars(BC_data)              # numeric vector of variances
 names(gene_var) <- rownames(BC_data)      # label variance values with gene names
 
-# 4. Select top 1000 most variable genes
+### 4. Select top 1000 most variable genes
 n_top <- min(1000, nrow(BC_data))         # if fewer than 1000 genes, adjust automatically
 top_genes <- names(sort(gene_var, decreasing = TRUE))[1:n_top]
 
-# 5. Subset the expression matrix to top genes
+### 5. Subset the expression matrix to top genes
 expr_top <- BC_data[top_genes, ]          # still genes x samples
 
-# 6. Transpose to samples x genes (t-SNE expects samples as rows)
+### 6. Transpose to samples x genes (t-SNE expects samples as rows)
 expr_top_t <- t(expr_top)
 
-# 7. Scale expression values (z-score per gene)
+### 7. Scale expression values (z-score per gene)
 expr_scaled <- scale(expr_top_t)
 
-# 8. Run t-SNE (2 dimensions)
+### 8. Run t-SNE (2 dimensions)
 tsne_res <- Rtsne(
   expr_scaled,
   dims = 2,
@@ -295,7 +306,7 @@ tsne_res <- Rtsne(
   pca = FALSE
 )
 
-# 9. Create a dataframe with t-SNE coordinates
+### 9. Create a dataframe with t-SNE coordinates
 tsne_df <- data.frame(
   Sample = rownames(expr_scaled),
   TSNE1  = tsne_res$Y[,1],
@@ -305,7 +316,7 @@ tsne_df <- data.frame(
 
 head(tsne_df)
 
-# 10. Create a scatter plot for the t_SNE
+### 10. Create a scatter plot for the t_SNE
 ggplot(tsne_df, aes(x = TSNE1, y = TSNE2)) +
   geom_point(color = "steelblue", size = 2, alpha = 0.7) +  # punten
   theme_minimal() +                                         # nette achtergrond
@@ -318,7 +329,7 @@ ggplot(tsne_df, aes(x = TSNE1, y = TSNE2)) +
     plot.title = element_text(hjust = 0.5, size = 16),
     axis.title = element_text(size = 14)
   )
-# 11. Merge t-SNE coordinates with merged_data on sample ID (F1, F2, F3,...)
+### 11. Merge t-SNE coordinates with merged_data on sample ID (F1, F2, F3,...)
 tsne_merged <- merge(
   tsne_df,     
   merged_data,       
@@ -326,57 +337,58 @@ tsne_merged <- merge(
   by.y = "title",      
   all.x = TRUE
 )
-# 12. Create plots for the clinical variables of interest
-#PLOT FOR CHEMOTHERAPY
+### 12. Create plots for the clinical variables of interest
+
+####PLOT FOR CHEMOTHERAPY
 ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`chemo treated:ch1`))) +
   geom_point(size = 2, alpha = 0.8) +
   scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
   theme_minimal() +
   labs(title = "t-SNE colored by Chemo Treatment",
        x = "t-SNE 1", y = "t-SNE 2")
-#PLOT FOR SURVIVAL EVENT
+####PLOT FOR SURVIVAL EVENT
 ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`overall survival event:ch1`))) +
   geom_point(size = 2, alpha = 0.8) +
   scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
   theme_minimal() +
   labs(title = "t-SNE colored by overall survival event",
        x = "t-SNE 1", y = "t-SNE 2")
-#PLOT FOR ER STATUS
+####PLOT FOR ER STATUS
 ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`er status:ch1`))) +
   geom_point(size = 2, alpha = 0.8) +
   scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
   theme_minimal() +
   labs(title = "t-SNE colored by ER status",
        x = "t-SNE 1", y = "t-SNE 2")
-#PLOT FOR HER2 STATUS
+####PLOT FOR HER2 STATUS
 ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`her2 status:ch1`))) +
   geom_point(size = 2, alpha = 0.8) +
   scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
   theme_minimal() +
   labs(title = "t-SNE colored by HER2 status",
        x = "t-SNE 1", y = "t-SNE 2")
-#PLOT FOR PGR STATUS
+####PLOT FOR PGR STATUS
 ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = factor(`pgr status:ch1`))) +
   geom_point(size = 2, alpha = 0.8) +
   scale_color_manual(values = c("steelblue", "firebrick"), labels = c("No", "Yes")) +
   theme_minimal() +
   labs(title = "t-SNE colored by PGR status",
        x = "t-SNE 1", y = "t-SNE 2")
-#PLOT FOR AGE AT DIAGNOSIS
+####PLOT FOR AGE AT DIAGNOSIS
 ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `age at diagnosis:ch1`)) +
   geom_point(size = 2, alpha = 0.8) +
   scale_color_viridis_c(option = "plasma") +
   theme_minimal() +
   labs(title = "t-SNE colored by Age at Diagnosis",
        x = "t-SNE 1", y = "t-SNE 2")
-#PLOT FOR OVERALL SURVIVAL DAYS
+####PLOT FOR OVERALL SURVIVAL DAYS
 ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `overall survival days:ch1`)) +
   geom_point(size = 2, alpha = 0.8) +
   scale_color_viridis_c(option = "plasma") +
   theme_minimal() +
   labs(title = "t-SNE colored by overall survival days",
        x = "t-SNE 1", y = "t-SNE 2")
-#PLOT FOR TUMOR SIZE
+####PLOT FOR TUMOR SIZE
 ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `tumor size:ch1`)) +
   geom_point(size = 2, alpha = 0.8) +
   scale_color_viridis_c(option = "plasma") +
@@ -384,11 +396,12 @@ ggplot(tsne_merged, aes(x = TSNE1, y = TSNE2, color = `tumor size:ch1`)) +
   labs(title = "t-SNE colored by tumor size",
        x = "t-SNE 1", y = "t-SNE 2")
 
-#checking for outliers
-# Copy dataset
+## checking for outliers
+
+### Copy dataset
 data_out <- merged_data
 
-# Select variables used in the Cox model for multivariate outlier detection
+### Select variables used in the Cox model for multivariate outlier detection
 vars <- data_out[, c("ESR1",
                      "chemo treated:ch1",
                      "overall survival days:ch1",
@@ -398,48 +411,49 @@ vars <- data_out[, c("ESR1",
                      "her2 status:ch1",
                      "pgr status:ch1")]
 
-# Convert all to numeric (factors become numeric 0/1/2..., which is fine for outlier detection)
+### Convert all to numeric (factors become numeric 0/1/2..., which is fine for outlier detection)
 vars_num <- data.frame(lapply(vars, function(x) as.numeric(as.character(x))))
 
-# Keep only rows without NA for covariance calculation
+### Keep only rows without NA for covariance calculation
 complete_idx <- complete.cases(vars_num)
 vars_complete <- vars_num[complete_idx, ]
 
-# Compute Mahalanobis distance
+### Compute Mahalanobis distance
 cov_matrix <- cov(vars_complete)
 center <- colMeans(vars_complete)
 
 mahal_dist <- mahalanobis(vars_complete, center, cov_matrix)
 
-# Threshold (p = 0.001)
+### Threshold (p = 0.001)
 threshold <- qchisq(0.999, df = ncol(vars_complete))
 
-# Local outliers (within complete-case subset)
+### Local outliers (within complete-case subset)
 outliers_local <- which(mahal_dist > threshold)
 
-# Re-map to original indices
+### Re-map to original indices
 outliers <- which(complete_idx)[outliers_local]
 
 outliers
 
-#testing hypothesis with Cox model
-merged_data_2$`chemo treated:ch1`<- as.factor(merged_data_2$`chemo treated:ch1`)
-merged_data_2$`overall survival event:ch1` <- as.numeric(merged_data_2$`overall survival event:ch1`)
-merged_data_2$`overall survival days:ch1` <- as.numeric(merged_data_2$`overall survival days:ch1`)
+## testing hypothesis with Cox model
+
+no_NA_reduced_merged_data$`chemo treated:ch1`<- as.factor(no_NA_reduced_merged_data$`chemo treated:ch1`)
+no_NA_reduced_merged_data$`overall survival event:ch1` <- as.numeric(no_NA_reduced_merged_data$`overall survival event:ch1`)
+no_NA_reduced_merged_data$`overall survival days:ch1` <- as.numeric(no_NA_reduced_merged_data$`overall survival days:ch1`)
 
 library(survival)
 cox_model <- coxph(Surv(`overall survival days:ch1`, `overall survival event:ch1`) ~ 
                    ESR1 * `chemo treated:ch1` + `age at diagnosis:ch1` + `tumor size:ch1` + `er status:ch1` + `her2 status:ch1` + `pgr status:ch1`, 
-                   data = merged_data_2)
+                   data = no_NA_reduced_merged_data)
 summary(cox_model)
 
 library(survminer)
-ggsurvplot(survfit(cox_model), data = merged_data_2, risk.table = TRUE)
+ggsurvplot(survfit(cox_model), data = no_NA_reduced_merged_data, risk.table = TRUE)
 
 
-###machine learning (python)
+# Machine learning (python)
 
-#load packages
+## load packages
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -737,3 +751,6 @@ plt.xlabel('Predicted', fontsize=12)
 plt.ylabel('Actual', fontsize=12)
 plt.title('Confusion Matrix – Model 2 (Random Forest, 500 genes)', fontsize=14)
 plt.show()
+
+
+
