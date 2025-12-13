@@ -10,7 +10,10 @@ This repository contains code, data, and documentation for a large-scale surviva
 - Generate reproducible survival plots and model outputs for publication.
 
 ## Repository Structure
-
+- Data and R scripts
+- Figures
+- RESULTS.md
+- README.md
 
 
 
