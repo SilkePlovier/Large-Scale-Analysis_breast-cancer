@@ -17,6 +17,7 @@ This repository contains code, data, and documentation for a large-scale surviva
 - README.md
 
 ## Key Variables
+- 'ABHD11': Expression level
 - `ESR1`: Expression level (continuous or stratified)
 - `chemo treated:ch1`: Binary chemotherapy status
 - `endocrine treated:ch1`: Binary endocrine therapy status
@@ -28,4 +29,4 @@ This repository contains code, data, and documentation for a large-scale surviva
 - Cox model summary with hazard ratios and p-values
 - Survival curves with risk tables
 - Stratified survival estimates based on model-informed groups
-- Machine learning? what is the output?
+- Machine learning
